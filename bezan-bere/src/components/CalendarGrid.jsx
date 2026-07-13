@@ -1,7 +1,7 @@
 import React from "react";
 import HabitRow from "./HabitRow";
 
-const CalendarGrid = React.memo(function CalendarGrid({ habits, days, onToggle, onDelete }) {
+const CalendarGrid = React.memo(function CalendarGrid({ habits, days, onToggle, onDelete, onEditName }) {
   return (
     <div className="space-y-4">
       {habits.length === 0 ? (
@@ -14,8 +14,10 @@ const CalendarGrid = React.memo(function CalendarGrid({ habits, days, onToggle, 
             key={habit.id}
             habit={habit}
             days={days}
+    
             onToggle={onToggle}
             onDelete={onDelete}
+            onEditName={onEditName}
           />
         ))
       )}

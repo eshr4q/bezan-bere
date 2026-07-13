@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { fetchHabits, toggleDay, addHabit, deleteHabit } from "../api/habitApi";
+import { fetchHabits, toggleDay, addHabit, deleteHabit, updateHabitName } from "../api/habitApi";
 import { getMonthDays } from "../utils/calendar";
 import MonthSelector from "./MonthSelector";
 import CalendarGrid from "./CalendarGrid";
@@ -15,12 +15,18 @@ export default function HabitTracker({ month, setMonth, year }) {
 
     const loadData = async () => {
       try {
-        const data = await fetchHabits(year);
-        if (isMounted) setHabits(data.habits || []);
+        const data = await fetchHabits(year, month);
+        // اگر دیتا ساختار {habits: [...]} دارد، این خط درست است
+        const newHabits = data?.habits || []; 
+        if (isMounted) setHabits(newHabits);
       } catch (err) {
         console.error("Network error:", err);
+        // این خط بسیار مهم است: اگر fetch ناموفق بود، لیست را خالی کن
+        if (isMounted) setHabits([]); 
       }
     };
+
+
 
     loadData();
     const interval = setInterval(loadData, 5000);
@@ -29,39 +35,36 @@ export default function HabitTracker({ month, setMonth, year }) {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [year]);
+  }, [year, month]); // اضافه شدن month به وابستگی‌ها
 
   // Handlers
-
-  {/*Gonna have to make changes to have habits per months not through the whole year*/}
-
   const handleAdd = useCallback(async (name) => {
     try {
-      const response = await addHabit(name, year);
+      const response = await addHabit(name, year, month); // اضافه شدن month
       if (response && response.habit) {
         setHabits((prev) => [...prev, response.habit]);
       } else {
-        const data = await fetchHabits(year);
+        const data = await fetchHabits(year, month); // اضافه شدن month
         setHabits(data.habits || []);
       }
     } catch (err) {
       console.error("Error adding habit:", err);
     }
-  }, [year]);
+  }, [year, month]); // اضافه شدن month به وابستگی‌ها
 
   const handleDelete = useCallback(async (id) => {
     if (window.confirm("Delete this habit?")) {
       try {
-        await deleteHabit(id, year);
+        await deleteHabit(id, year, month); // اضافه شدن month
         setHabits((prev) => prev.filter((h) => h.id !== id));
       } catch (err) {
         console.error("Error deleting habit:", err);
       }
     }
-  }, [year]);
+  }, [year, month]); // اضافه شدن month به وابستگی‌ها
 
   const handleToggle = useCallback(async (habitId, date, value) => {
-    // Optimistic UI Update (آپدیت سریع در ظاهر قبل از ریسپانس سرور) not sure if it's the best solution tho
+    // Optimistic UI Update
     setHabits((prev) =>
       prev.map((h) =>
         h.id === habitId ? { ...h, days: { ...h.days, [date]: value } } : h
@@ -69,16 +72,30 @@ export default function HabitTracker({ month, setMonth, year }) {
     );
 
     try {
-      await toggleDay(year, habitId, date, value);
+      await toggleDay(year, month, habitId, date, value); // اضافه شدن month
     } catch (err) {
       console.error("Error toggling day, reverting...", err);
-      // Rollback در صورت خطا
-      const data = await fetchHabits(year);
+      // Rollback
+      const data = await fetchHabits(year, month); // اضافه شدن month
       setHabits(data.habits || []);
     }
-  }, [year]);
+  }, [year, month]); // اضافه شدن month به وابستگی‌ها
+
+  const handleEditName = useCallback(async (id, newName) => {
+    // Optimistic UI: اول استیت را آپدیت می‌کنیم
+    const previousHabits = [...habits];
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, name: newName } : h));
+
+    try {
+      await updateHabitName(id, newName, year, month);
+    } catch (error) {
+      console.error("Error updating name:", error);
+      setHabits(previousHabits); // Rollback در صورت خطا
+    }
+  }, [habits, year, month]);
 
   const days = useMemo(() => getMonthDays(year, month), [year, month]);
+
 
   return (
     <>
@@ -102,10 +119,12 @@ export default function HabitTracker({ month, setMonth, year }) {
 
       <main className="w-full pb-4">
         <CalendarGrid
-          habits={habits}
+        habits={Object.values(habits)}
           days={days}
+          month={month} 
           onToggle={handleToggle}
           onDelete={handleDelete}
+          onEditName={handleEditName} 
         />
       </main>
 
