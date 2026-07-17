@@ -10,4 +10,6 @@ coverage/
 .idea/
 *.tsbuildinfo
 .DS_Store
-
+bezan-bere-fileeditor/data/*
+bezan-bere-fileeditor/node_modules
+bezan-bere/node_modules
