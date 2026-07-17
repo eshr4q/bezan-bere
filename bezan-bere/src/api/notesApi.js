@@ -1,8 +1,16 @@
-const API = `http://${window.location.hostname}:5001`;
+const API = process.env.REACT_APP_API_URL || `http://${window.location.hostname}:5001`;
+
+async function parseJsonResponse(res) {
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || `Request failed with status ${res.status}`);
+  }
+  return data;
+}
 
 export async function fetchNotes() {
   const res = await fetch(`${API}/notes`);
-  return res.json();
+  return parseJsonResponse(res);
 }
 
 export async function addNoteApi(note) {
@@ -11,13 +19,14 @@ export async function addNoteApi(note) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(note)
   });
-  return res.json();
+  return parseJsonResponse(res);
 }
 
 export async function deleteNoteApi(id) {
-  await fetch(`${API}/notes/${id}`, {
+  const res = await fetch(`${API}/notes/${id}`, {
     method: "DELETE"
   });
+  return parseJsonResponse(res);
 }
 
 export async function updateNoteContentApi(id, title, content) {
@@ -26,7 +35,7 @@ export async function updateNoteContentApi(id, title, content) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, content })
   });
-  return res.json();
+  return parseJsonResponse(res);
 }
 
 export async function updateNotePositionApi(id, x, y) {
@@ -35,5 +44,5 @@ export async function updateNotePositionApi(id, x, y) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ x, y })
   });
-  return res.json();
+  return parseJsonResponse(res);
 }

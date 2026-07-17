@@ -1,63 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import Note from "./Note";
 import Header from "./Header";
-import { fetchNotes, addNoteApi, deleteNoteApi, updateNoteContentApi, updateNotePositionApi } from "../api/notesApi";
+import useNotesStore from "../store/useNotesStore";
 
 const Wall = () => {
-  const [notes, setNotes] = useState([]);
+  const notes = useNotesStore((state) => state.notes);
+  const loadNotes = useNotesStore((state) => state.loadNotes);
+  const addNote = useNotesStore((state) => state.addNote);
+  const deleteNote = useNotesStore((state) => state.deleteNote);
+  const updateNote = useNotesStore((state) => state.updateNote);
+  const updateNotePosition = useNotesStore((state) => state.updateNotePosition);
 
   useEffect(() => {
-    const loadNotes = async () => {
-      try {
-        const data = await fetchNotes();
-        setNotes(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Failed to fetch notes:", error);
-      }
-    };
-
     loadNotes();
     const interval = setInterval(loadNotes, 5000); // Polling برای آپدیت تغییرات کاربر دوم
     return () => clearInterval(interval);
-  }, []);
-
-  const updateNotePosition = async (id, x, y) => {
-    setNotes((prevNotes) =>
-      prevNotes.map((note) => (note.id === id ? { ...note, x, y } : note))
-    );
-    await updateNotePositionApi(id, x, y);
-  };
-
-  const addNote = async (title, content, deadline) => {
-    const newNote = {
-      id: `note-${Date.now()}`,
-      title,
-      content,
-      creationDate: new Date().toLocaleDateString(),
-      deadline,
-      x: Math.random() * 300,
-      y: Math.random() * 300,
-    };
-    
-    setNotes((prevNotes) => [...prevNotes, newNote]);
-    await addNoteApi(newNote);
-  };
-
-  const deleteNote = async (id) => {
-    setNotes((prevNotes) => prevNotes.filter((note) => note.id !== id));
-    await deleteNoteApi(id);
-  };
-
-  const updateNote = async (id, updatedTitle, updatedContent) => {
-    setNotes((prevNotes) =>
-      prevNotes.map((note) =>
-        note.id === id
-          ? { ...note, title: updatedTitle, content: updatedContent }
-          : note
-      )
-    );
-    await updateNoteContentApi(id, updatedTitle, updatedContent);
-  };
+  }, [loadNotes]);
 
   return (
     <div className="w-full">

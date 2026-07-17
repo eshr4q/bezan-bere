@@ -20,7 +20,7 @@ const ensureMonthFile = async (year, month) => {
             await fs.access(filePath);
         } catch (error) {
             // File doesn't exist, create it with default content
-            const defaultData = { habits: [] };
+            const defaultData = { year, month, habits: [] };
             await fs.writeFile(filePath, JSON.stringify(defaultData, null, 2), 'utf8');
         }
     } catch (error) {
@@ -41,7 +41,7 @@ const readMonthData = async (year, month) => {
         
         // If file is empty, return default structure
         if (fileContent.trim() === '') {
-            return { habits: [] };
+            return { year, month, habits: [] };
         }
         
         const data = JSON.parse(fileContent);
@@ -52,19 +52,20 @@ const readMonthData = async (year, month) => {
         } else {
             // If structure is invalid, return the default
             console.warn(`Warning: Invalid data structure in ${filePath}. Returning default.`);
-            return { habits: [] };
+            return { year, month, habits: [] };
         }
 
     } catch (error) {
         console.error(`Error reading or parsing file ${filePath}:`, error);
         // If any error occurs (read error, parse error), return a safe default structure
-        return { habits: [] };
+        return { year, month, habits: [] };
     }
 };
 
 // Writes data for a given year and month
 const writeMonthData = async (year, month, data) => {
     try {
+        await fs.mkdir(dataDir, { recursive: true });
         const filePath = getMonthFile(year, month);
         await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
     } catch (error) {

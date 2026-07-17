@@ -1,94 +1,149 @@
 const { readMonthData, writeMonthData } = require("../utils/fileUtils");
 
-// تابع کمکی برای دریافت year و month از کوئری
 const getQueryParams = (req) => ({
   year: Number(req.query.year),
   month: Number(req.query.month)
 });
 
+const isValidYearMonth = (year, month) => (
+  Number.isInteger(year) &&
+  Number.isInteger(month) &&
+  year > 0 &&
+  month >= 1 &&
+  month <= 12
+);
+
+const validateYearMonth = (res, year, month) => {
+  if (!isValidYearMonth(year, month)) {
+    res.status(400).json({ error: "valid year and month query parameters are required" });
+    return false;
+  }
+  return true;
+};
+
 // GET /habits?year=2026&month=5
 async function getHabits(req, res) {
-  const { year, month } = getQueryParams(req);
-  if (!year || !month) return res.status(400).json({ error: "year and month are required" });
+  try {
+    const { year, month } = getQueryParams(req);
+    if (!validateYearMonth(res, year, month)) return;
 
-  const data = await readMonthData(year, month);
-  res.json(data);
+    const data = await readMonthData(year, month);
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to read habits" });
+  }
 }
 
 // POST /habits?year=2026&month=5
 async function saveHabits(req, res) {
-  const { year, month } = getQueryParams(req);
-  if (!year || !month) return res.status(400).json({ error: "year and month are required" });
+  try {
+    const { year, month } = getQueryParams(req);
+    if (!validateYearMonth(res, year, month)) return;
+    if (!Array.isArray(req.body)) return res.status(400).json({ error: "habits array is required" });
 
-  await writeMonthData(year, month, { year, month, habits: req.body });
-  res.json({ status: "ok" });
+    await writeMonthData(year, month, { year, month, habits: req.body });
+    res.json({ status: "ok" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to save habits" });
+  }
 }
 
 // POST /habits/add?year=2026&month=5
 async function addHabit(req, res) {
-  const { year, month } = getQueryParams(req);
-  if (!year || !month) return res.status(400).json({ error: "year and month are required" });
+  try {
+    const { year, month } = getQueryParams(req);
+    const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+    if (!validateYearMonth(res, year, month)) return;
+    if (!name) return res.status(400).json({ error: "name is required" });
 
-  const data = await readMonthData(year, month);
+    const data = await readMonthData(year, month);
 
-  const newHabit = {
-    id: Date.now(),
-    name: req.body.name,
-    days: {}
-  };
+    const newHabit = {
+      id: Date.now(),
+      name,
+      days: {}
+    };
 
-  data.habits.push(newHabit);
-  await writeMonthData(year, month, data);
+    data.habits.push(newHabit);
+    await writeMonthData(year, month, data);
 
-  res.json(newHabit);
+    res.status(201).json({ status: "created", habit: newHabit });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to add habit" });
+  }
 }
 
 // DELETE /habits/:id?year=2026&month=5
 async function deleteHabit(req, res) {
-  const { year, month } = getQueryParams(req);
-  const id = Number(req.params.id);
+  try {
+    const { year, month } = getQueryParams(req);
+    const id = Number(req.params.id);
+    if (!validateYearMonth(res, year, month)) return;
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "valid habit id is required" });
 
-  const data = await readMonthData(year, month);
+    const data = await readMonthData(year, month);
+    const originalLength = data.habits.length;
 
-  data.habits = data.habits.filter(h => h.id !== id);
-  await writeMonthData(year, month, data);
+    data.habits = data.habits.filter(h => h.id !== id);
+    if (data.habits.length === originalLength) {
+      return res.status(404).json({ error: "habit not found" });
+    }
 
-  res.json({ status: "deleted", id });
+    await writeMonthData(year, month, data);
+    res.json({ status: "deleted", id });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete habit" });
+  }
 }
 
 // PATCH /habits/update-day?year=2026&month=5
 async function updateDay(req, res) {
-  const { habitId, date, value } = req.body;
-  const { year, month } = getQueryParams(req);
+  try {
+    const { habitId, date, value } = req.body;
+    const { year, month } = getQueryParams(req);
+    const id = Number(habitId);
+    if (!validateYearMonth(res, year, month)) return;
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "valid habitId is required" });
+    if (typeof date !== "string" || !date) return res.status(400).json({ error: "date is required" });
+    if (typeof value !== "boolean") return res.status(400).json({ error: "value must be boolean" });
 
-  const data = await readMonthData(year, month);
-  const habit = data.habits.find(h => h.id === habitId);
+    const data = await readMonthData(year, month);
+    const habit = data.habits.find(h => h.id === id);
 
-  if (!habit) return res.status(404).json({ error: "habit not found" });
+    if (!habit) return res.status(404).json({ error: "habit not found" });
 
-  habit.days[date] = value;
-  await writeMonthData(year, month, data);
+    habit.days = habit.days || {};
+    habit.days[date] = value;
+    await writeMonthData(year, month, data);
 
-  res.json({ status: "ok", habit });
+    res.json({ status: "ok", habit });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update habit day" });
+  }
 }
 
-// PUT /habits/:id/name?year=2026&month=5  <--- اضافه شده برای ویرایش نام
+// PUT /habits/:id/name?year=2026&month=5
 async function updateHabitName(req, res) {
-  const { year, month } = getQueryParams(req);
-  const id = Number(req.params.id);
-  const { name } = req.body;
+  try {
+    const { year, month } = getQueryParams(req);
+    const id = Number(req.params.id);
+    const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+    if (!validateYearMonth(res, year, month)) return;
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "valid habit id is required" });
+    if (!name) return res.status(400).json({ error: "name is required" });
 
-  if (!name) return res.status(400).json({ error: "name is required" });
+    const data = await readMonthData(year, month);
+    const habit = data.habits.find(h => h.id === id);
 
-  const data = await readMonthData(year, month);
-  const habit = data.habits.find(h => h.id === id);
+    if (!habit) return res.status(404).json({ error: "habit not found" });
 
-  if (!habit) return res.status(404).json({ error: "habit not found" });
+    habit.name = name;
+    await writeMonthData(year, month, data);
 
-  habit.name = name;
-  await writeMonthData(year, month, data);
-
-  res.json({ status: "ok", habit });
+    res.json({ status: "ok", habit });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update habit name" });
+  }
 }
 
 module.exports = {
@@ -97,5 +152,5 @@ module.exports = {
   addHabit,
   deleteHabit,
   updateDay,
-  updateHabitName, // صادر کردن تابع جدید
+  updateHabitName,
 };

@@ -5,7 +5,7 @@ const months = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-{/* Now the child must be memosized to avoid unnecessary render cuz the parent is being rerendered every 5 or so */}
+// Memoized to avoid unnecessary renders while the parent polls for updates.
 const MonthSelector = React.memo(function MonthSelector({ month, setMonth }) {
 
   const handleChange = useCallback((e) => {

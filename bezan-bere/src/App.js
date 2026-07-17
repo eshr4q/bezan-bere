@@ -2,11 +2,11 @@ import React, { useState, useMemo } from "react";
 import { getSeason, seasonBg } from "./utils/season";
 import HabitTracker from "./components/HabitTracker";
 import Wall from "./components/Wall";
+import useHabitStore from "./store/useHabitStore";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("habits");
-  const [year] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const month = useHabitStore((state) => state.month);
 
   const season = useMemo(() => getSeason(month), [month]);
 
@@ -39,11 +39,7 @@ export default function App() {
         </div>
 
         {/* Content Area */}
-        {activeTab === "habits" ? (
-          <HabitTracker month={month} setMonth={setMonth} year={year} />
-        ) : (
-          <Wall />
-        )}
+        {activeTab === "habits" ? <HabitTracker /> : <Wall />}
 
       </div>
     </div>

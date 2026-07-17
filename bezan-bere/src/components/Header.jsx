@@ -24,8 +24,22 @@ const Header = ({ onAddNote }) => {
 
       <form
         onSubmit={handleSubmit}
-        className="mb-4 flex flex-col md:flex-row items-center justify-center space-y-2 md:space-y-0 md:space-x-2"
+        className="mb-4 flex flex-col md:flex-row items-center justify-center gap-2"
       >
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Title"
+          className="border p-2 rounded w-full md:w-40"
+        />
+        <input
+          type="text"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Content"
+          className="border p-2 rounded w-full md:w-64"
+        />
         <input
           type="date"
           value={deadline}

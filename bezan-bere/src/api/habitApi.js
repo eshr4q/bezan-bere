@@ -1,9 +1,16 @@
-// needs revision
-const API = `http://${window.location.hostname}:5001`;
+const API = process.env.REACT_APP_API_URL || `http://${window.location.hostname}:5001`;
+
+async function parseJsonResponse(res) {
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || `Request failed with status ${res.status}`);
+  }
+  return data;
+}
 
 export async function fetchHabits(year, month) {
   const res = await fetch(`${API}/habits?year=${year}&month=${month}`);
-  return res.json();
+  return parseJsonResponse(res);
 }
 
 export async function toggleDay(year, month, habitId, date, value) {
@@ -16,22 +23,23 @@ export async function toggleDay(year, month, habitId, date, value) {
       value
     })
   });
-  return res.json();
+  return parseJsonResponse(res);
 }
 
 export async function addHabit(name, year, month) {
   const res = await fetch(`${API}/habits/add?year=${year}&month=${month}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }) 
+    body: JSON.stringify({ name })
   });
-  return res.json();
+  return parseJsonResponse(res);
 }
 
 export async function deleteHabit(id, year, month) {
-  await fetch(`${API}/habits/${id}?year=${year}&month=${month}`, {
+  const res = await fetch(`${API}/habits/${id}?year=${year}&month=${month}`, {
     method: "DELETE"
   });
+  return parseJsonResponse(res);
 }
 
 
@@ -41,5 +49,5 @@ export async function updateHabitName(id, newName, year, month) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: newName })
   });
-  return res.json();
+  return parseJsonResponse(res);
 }
