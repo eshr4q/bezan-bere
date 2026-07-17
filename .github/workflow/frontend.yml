@@ -1,22 +1,24 @@
-name: Build & Deploy
+name: Frontend - Build & Deploy
 
 on:
   push:
     branches:
       - main
       - dev
+    paths:
+      - "bezan-bere/**"
+      - ".github/workflows/frontend.yml" 
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository }}
+  IMAGE_NAME: ghcr.io/${{ github.repository }}/frontend
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
 
     permissions:
-      packages: write
       contents: read
+      packages: write
 
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
@@ -27,8 +29,7 @@ jobs:
       - name: Set Tag
         id: meta
         run: |
-          TAG=${GITHUB_SHA::7}
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
       - uses: docker/login-action@v3
         with:
@@ -40,76 +41,66 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./bezan-bere
+          file: ./bezan-bere/Dockerfile
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
             ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ${{ env.IMAGE_NAME }}:latest
 
   deploy-dev:
-
-    needs: build
-
     if: github.ref_name == 'dev'
-
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
-
       - uses: appleboy/ssh-action@v1.2.0
-
         with:
           host: ${{ secrets.DEV_SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
 
           script: |
-
             docker login ghcr.io \
               -u ${{ github.actor }} \
               -p ${{ secrets.GITHUB_TOKEN }}
 
             docker pull ${{ env.IMAGE_NAME }}:dev
 
-            docker stop react-app || true
-            docker rm react-app || true
+            docker stop frontend || true
+            docker rm frontend || true
 
             docker run -d \
               --restart unless-stopped \
-              --name react-app \
+              --name frontend \
               -p 80:80 \
               ${{ env.IMAGE_NAME }}:dev
 
   deploy-prod:
-
-    needs: build
-
     if: github.ref_name == 'main'
-
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
-
       - uses: appleboy/ssh-action@v1.2.0
-
         with:
           host: ${{ secrets.PROD_SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
 
           script: |
-
             docker login ghcr.io \
               -u ${{ github.actor }} \
               -p ${{ secrets.GITHUB_TOKEN }}
 
             docker pull ${{ env.IMAGE_NAME }}:main
 
-            docker stop react-app || true
-            docker rm react-app || true
+            docker stop frontend || true
+            docker rm frontend || true
 
             docker run -d \
               --restart unless-stopped \
-              --name react-app \
+              --name frontend \
               -p 80:80 \
               ${{ env.IMAGE_NAME }}:main
